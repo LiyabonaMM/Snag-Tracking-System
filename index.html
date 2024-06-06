@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Snag Tracking System</title>
+    <title>MyTalent Snag Tracking System</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
 </head>
@@ -12,9 +12,13 @@
         <h1 class="text-center mb-4">Snag Tracking System</h1>
         <form id="snagForm">
             <div class="form-row">
-                <div class="form-group col-md-3">
+                <div class="form-group col-md-4">
                     <label for="description">Description</label>
                     <input type="text" class="form-control" id="description" placeholder="Snag Description" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="jiraLink">Jira Ticket Link</label>
+                    <input type="url" class="form-control" id="jiraLink" placeholder="https://jira.example.com/ticket" required>
                 </div>
                 <div class="form-group col-md-2">
                     <label for="dateIdentified">Date Identified</label>
@@ -40,13 +44,17 @@
                         <option>Low</option>
                     </select>
                 </div>
-                <div class="form-group col-md-2">
-                    <label for="recurrenceCount">Recurrence Count</label>
-                    <input type="number" class="form-control" id="recurrenceCount" placeholder="0" required>
-                </div>
             </div>
             <button type="submit" class="btn btn-primary mb-2">Add Snag</button>
         </form>
+
+        <div class="btn-group mb-3" role="group" aria-label="Filter">
+            <button type="button" class="btn btn-secondary" onclick="filterSnags('All')">All</button>
+            <button type="button" class="btn btn-secondary" onclick="filterSnags('To Do')">To Do</button>
+            <button type="button" class="btn btn-secondary" onclick="filterSnags('In Progress')">In Progress</button>
+            <button type="button" class="btn btn-secondary" onclick="filterSnags('Resolved')">Resolved</button>
+        </div>
+
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -56,7 +64,6 @@
                     <th>Assigned To</th>
                     <th>Status</th>
                     <th>Priority</th>
-                    <th>Recurrence Count</th>
                     <th>Actions</th>
                 </tr>
             </thead>
