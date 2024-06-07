@@ -1,4 +1,5 @@
 // script.js
+
 let editIndex = null;
 let snags = [];
 
@@ -22,7 +23,7 @@ document.getElementById('snagForm').addEventListener('submit', function(e) {
 
 function addOrUpdateSnag() {
     const snagDetails = document.getElementById('snagDetails').value;
-    const snagLink = document.getElementById('snagLink').value; // New field for JIRA link
+    const snagLink = document.getElementById('snagLink').value;
     const consultantReporterName = document.getElementById('consultantReporterName').value;
     const dateReported = document.getElementById('dateReported').value;
     const assignedTo = document.getElementById('assignedTo').value;
@@ -32,24 +33,22 @@ function addOrUpdateSnag() {
     const previousDateReported = document.getElementById('previousDateReported').value;
     const previousWorker = document.getElementById('previousWorker').value;
 
-    // Create the snag object
     const snag = {
         snag_details: snagDetails,
-        snag_link: snagLink, // Include snag link
+        snag_link: snagLink,
         consultant_reporter_name: consultantReporterName,
         date_reported: dateReported,
         assigned_to: assignedTo,
         status: status,
-        date_resolved: dateResolved || null, // Handle optional fields
+        date_resolved: dateResolved || null,
         was_it_reported_before: wasItReportedBefore,
-        previous_date_reported: previousDateReported || null, // Handle optional fields
-        previous_worker: previousWorker || null // Handle optional fields
+        previous_date_reported: previousDateReported || null,
+        previous_worker: previousWorker || null
     };
 
     console.log("Adding or Updating Snag:", snag);
 
     if (editIndex !== null) {
-        // Update existing snag
         const id = snags[editIndex].id;
         fetch(`http://localhost:3000/snags/${id}`, {
             method: 'PUT',
@@ -64,7 +63,6 @@ function addOrUpdateSnag() {
         })
         .catch(error => console.error('Error updating snag:', error));
     } else {
-        // Add new snag
         fetch('http://localhost:3000/snags', {
             method: 'POST',
             headers: {
@@ -122,7 +120,7 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
 function editSnag(index) {
     const snag = snags[index];
     document.getElementById('snagDetails').value = snag.snag_details;
-    document.getElementById('snagLink').value = snag.snag_link; // Populate snag link field
+    document.getElementById('snagLink').value = snag.snag_link;
     document.getElementById('consultantReporterName').value = snag.consultant_reporter_name;
     document.getElementById('dateReported').value = snag.date_reported;
     document.getElementById('assignedTo').value = snag.assigned_to;
@@ -151,6 +149,7 @@ function closeSnag(id) {
     const index = snags.findIndex(s => s.id === id);
     if (index !== -1) {
         snags[index].status = 'Resolved';
+        snags[index].date_resolved = new Date().toISOString().split('T')[0]; // Set the current date as resolved date
         fetch(`http://localhost:3000/snags/${id}`, {
             method: 'PUT',
             headers: {
@@ -159,6 +158,7 @@ function closeSnag(id) {
             body: JSON.stringify(snags[index])
         })
         .then(() => {
+            // Update the local snags list to reflect the resolved status immediately
             renderSnagTable();
             updateSummary();
         })
