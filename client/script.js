@@ -1,7 +1,7 @@
 let editIndex = null;
 let snags = [];
 
-// Function to fetch snags from the database
+// Fetch snags from the server
 function fetchSnags() {
     fetch('http://localhost:3000/snags')
         .then(response => response.json())
@@ -13,20 +13,37 @@ function fetchSnags() {
         .catch(error => console.error('Error fetching snags:', error));
 }
 
+// Handle form submission for adding or updating a snag
 document.getElementById('snagForm').addEventListener('submit', function(e) {
     e.preventDefault();
     addOrUpdateSnag();
 });
 
 function addOrUpdateSnag() {
-    const description = document.getElementById('description').value;
-    const jiraLink = document.getElementById('jiraLink').value;
-    const dateIdentified = document.getElementById('dateIdentified').value;
+    const snagDetails = document.getElementById('snagDetails').value;
+    const consultantReporterName = document.getElementById('consultantReporterName').value;
+    const dateReported = document.getElementById('dateReported').value;
     const assignedTo = document.getElementById('assignedTo').value;
     const status = document.getElementById('status').value;
-    const priority = document.getElementById('priority').value;
+    const dateResolved = document.getElementById('dateResolved').value;
+    const wasItReportedBefore = document.getElementById('wasItReportedBefore').value === 'true';
+    const previousDateReported = document.getElementById('previousDateReported').value;
+    const previousWorker = document.getElementById('previousWorker').value;
 
-    const snag = { description, jiraLink, dateIdentified, assignedTo, status, priority };
+    // Create the snag object
+    const snag = {
+        snag_details: snagDetails,
+        consultant_reporter_name: consultantReporterName,
+        date_reported: dateReported,
+        assigned_to: assignedTo,
+        status: status,
+        date_resolved: dateResolved || null, // Handle optional fields
+        was_it_reported_before: wasItReportedBefore,
+        previous_date_reported: previousDateReported || null, // Handle optional fields
+        previous_worker: previousWorker || null // Handle optional fields
+    };
+
+    console.log("Adding or Updating Snag:", snag);
 
     if (editIndex !== null) {
         // Update existing snag
@@ -64,21 +81,31 @@ function addOrUpdateSnag() {
     document.getElementById('snagForm').reset();
 }
 
-function renderSnagTable(filter = 'All', assigneeFilter = null) {
+// Render the snag table with filters
+function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
     const snagTableBody = document.getElementById('snagTableBody');
     snagTableBody.innerHTML = '';
-    snags.filter(snag => 
-        (filter === 'All' || snag.status === filter) &&
-        (!assigneeFilter || snag.assignedTo === assigneeFilter)
-    ).forEach((snag, index) => {
+
+    const filteredSnags = snags.filter(snag =>
+        (statusFilter === 'All' || snag.status === statusFilter) &&
+        (assigneeFilter === 'All' || snag.assigned_to === assigneeFilter)
+    );
+
+    console.log("Filtered Snags for Rendering:", filteredSnags);
+
+    filteredSnags.forEach((snag, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${snag.id}</td>
-            <td><a href="${snag.jiraLink}" target="_blank">${snag.description}</a></td>
-            <td>${snag.dateIdentified}</td>
-            <td>${snag.assignedTo}</td>
-            <td>${snag.status}</td>
-            <td>${snag.priority}</td>
+            <td>${snag.snag_details || ''}</td>
+            <td>${snag.consultant_reporter_name || ''}</td>
+            <td>${snag.date_reported || ''}</td>
+            <td>${snag.assigned_to || ''}</td>
+            <td>${snag.status || ''}</td>
+            <td>${snag.date_resolved || ''}</td>
+            <td>${snag.was_it_reported_before ? 'Yes' : 'No'}</td>
+            <td>${snag.previous_date_reported || ''}</td>
+            <td>${snag.previous_worker || ''}</td>
             <td>
                 <button class="btn btn-success btn-sm" onclick="editSnag(${index})">Edit</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteSnag(${snag.id})">Delete</button>
@@ -91,12 +118,15 @@ function renderSnagTable(filter = 'All', assigneeFilter = null) {
 
 function editSnag(index) {
     const snag = snags[index];
-    document.getElementById('description').value = snag.description;
-    document.getElementById('jiraLink').value = snag.jiraLink;
-    document.getElementById('dateIdentified').value = snag.dateIdentified;
-    document.getElementById('assignedTo').value = snag.assignedTo;
+    document.getElementById('snagDetails').value = snag.snag_details;
+    document.getElementById('consultantReporterName').value = snag.consultant_reporter_name;
+    document.getElementById('dateReported').value = snag.date_reported;
+    document.getElementById('assignedTo').value = snag.assigned_to;
     document.getElementById('status').value = snag.status;
-    document.getElementById('priority').value = snag.priority;
+    document.getElementById('dateResolved').value = snag.date_resolved || '';
+    document.getElementById('wasItReportedBefore').value = snag.was_it_reported_before ? 'true' : 'false';
+    document.getElementById('previousDateReported').value = snag.previous_date_reported || '';
+    document.getElementById('previousWorker').value = snag.previous_worker || '';
 
     editIndex = index;
 }
@@ -132,12 +162,21 @@ function closeSnag(id) {
     }
 }
 
-function filterSnags(filter) {
-    renderSnagTable(filter);
+function filterSnags(status) {
+    currentStatusFilter = status;
+    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
+let currentAssigneeFilter = 'All';
 function filterByAssignee(assignee) {
-    renderSnagTable('All', assignee);
+    currentAssigneeFilter = assignee;
+    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
+}
+
+let currentStatusFilter = 'All';
+function filterByStatus(status) {
+    currentStatusFilter = status;
+    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
 function updateSummary() {

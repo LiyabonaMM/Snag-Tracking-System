@@ -13,7 +13,7 @@ app.use(cors());
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'Mxhalisalm011216-',
+    password: 'Mxhalisalm011216-', // Update with your actual password
     database: 'snag_tracking'
 });
 
@@ -38,10 +38,28 @@ app.get('/snags', (req, res) => {
 
 // API endpoint to add a new snag
 app.post('/snags', (req, res) => {
-    const { description, jiraLink, dateIdentified, assignedTo, status, priority } = req.body;
-    const query = 'INSERT INTO snags (description, jiraLink, dateIdentified, assignedTo, status, priority) VALUES (?, ?, ?, ?, ?, ?)';
-    db.query(query, [description, jiraLink, dateIdentified, assignedTo, status, priority], (err, result) => {
+    const {
+        snag_details, 
+        date_reported, 
+        consultant_reporter_name, 
+        assigned_to, 
+        status, 
+        date_resolved, 
+        was_it_reported_before, 
+        previous_date_reported, 
+        previous_worker 
+    } = req.body;
+
+    // Debug log for request body
+    console.log("Received data for new snag:", req.body);
+
+    const query = `INSERT INTO snags 
+        (snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved, was_it_reported_before, previous_date_reported, previous_worker) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    db.query(query, [snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null], (err, result) => {
         if (err) {
+            console.error("Error adding new snag:", err);
             res.status(500).send(err);
         } else {
             res.json({ id: result.insertId, ...req.body });
@@ -52,10 +70,25 @@ app.post('/snags', (req, res) => {
 // API endpoint to update an existing snag
 app.put('/snags/:id', (req, res) => {
     const { id } = req.params;
-    const { description, jiraLink, dateIdentified, assignedTo, status, priority } = req.body;
-    const query = 'UPDATE snags SET description = ?, jiraLink = ?, dateIdentified = ?, assignedTo = ?, status = ?, priority = ? WHERE id = ?';
-    db.query(query, [description, jiraLink, dateIdentified, assignedTo, status, priority, id], (err, result) => {
+    const {
+        snag_details, 
+        date_reported, 
+        consultant_reporter_name, 
+        assigned_to, 
+        status, 
+        date_resolved, 
+        was_it_reported_before, 
+        previous_date_reported, 
+        previous_worker 
+    } = req.body;
+
+    const query = `UPDATE snags 
+        SET snag_details = ?, date_reported = ?, consultant_reporter_name = ?, assigned_to = ?, status = ?, date_resolved = ?, was_it_reported_before = ?, previous_date_reported = ?, previous_worker = ? 
+        WHERE id = ?`;
+
+    db.query(query, [snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, id], (err, result) => {
         if (err) {
+            console.error("Error updating snag:", err);
             res.status(500).send(err);
         } else {
             res.json({ id, ...req.body });
@@ -67,8 +100,10 @@ app.put('/snags/:id', (req, res) => {
 app.delete('/snags/:id', (req, res) => {
     const { id } = req.params;
     const query = 'DELETE FROM snags WHERE id = ?';
+
     db.query(query, [id], (err, result) => {
         if (err) {
+            console.error("Error deleting snag:", err);
             res.status(500).send(err);
         } else {
             res.sendStatus(204);
