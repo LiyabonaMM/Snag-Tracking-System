@@ -1,3 +1,4 @@
+// script.js
 let editIndex = null;
 let snags = [];
 
@@ -21,6 +22,7 @@ document.getElementById('snagForm').addEventListener('submit', function(e) {
 
 function addOrUpdateSnag() {
     const snagDetails = document.getElementById('snagDetails').value;
+    const snagLink = document.getElementById('snagLink').value; // New field for JIRA link
     const consultantReporterName = document.getElementById('consultantReporterName').value;
     const dateReported = document.getElementById('dateReported').value;
     const assignedTo = document.getElementById('assignedTo').value;
@@ -33,6 +35,7 @@ function addOrUpdateSnag() {
     // Create the snag object
     const snag = {
         snag_details: snagDetails,
+        snag_link: snagLink, // Include snag link
         consultant_reporter_name: consultantReporterName,
         date_reported: dateReported,
         assigned_to: assignedTo,
@@ -97,7 +100,7 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${snag.id}</td>
-            <td>${snag.snag_details || ''}</td>
+            <td>${snag.snag_details ? `<a href="${snag.snag_link}" target="_blank">${snag.snag_details}</a>` : ''}</td>
             <td>${snag.consultant_reporter_name || ''}</td>
             <td>${snag.date_reported || ''}</td>
             <td>${snag.assigned_to || ''}</td>
@@ -119,6 +122,7 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
 function editSnag(index) {
     const snag = snags[index];
     document.getElementById('snagDetails').value = snag.snag_details;
+    document.getElementById('snagLink').value = snag.snag_link; // Populate snag link field
     document.getElementById('consultantReporterName').value = snag.consultant_reporter_name;
     document.getElementById('dateReported').value = snag.date_reported;
     document.getElementById('assignedTo').value = snag.assigned_to;
