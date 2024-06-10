@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +6,9 @@
     <title>MyTalent Snag Tracking System</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
+    <!-- Include jsPDF and jsPDF autoTable plugin from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <div class="container mt-5">
@@ -71,6 +73,10 @@
                     <label for="previousWorker">If yes, who worked on it?</label>
                     <input type="text" class="form-control" id="previousWorker" placeholder="Previous Worker">
                 </div>
+                <div class="form-group col-md-2">
+                    <label for="recurringCount">Recurring Count</label>
+                    <input type="number" class="form-control" id="recurringCount" min="1" value="1">
+                </div>
             </div>
             <button type="submit" class="btn btn-primary mb-2">Add Snag</button>
         </form>
@@ -81,6 +87,13 @@
             <button type="button" class="btn btn-secondary" onclick="filterSnags('In Progress')">In Progress</button>
             <button type="button" class="btn btn-secondary" onclick="filterSnags('Awaiting Feedback')">Awaiting Feedback</button>
             <button type="button" class="btn btn-secondary" onclick="filterSnags('Resolved')">Resolved</button>
+        </div>
+
+        <div class="btn-group mb-3" role="group" aria-label="Sort">
+            <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'asc')">Sort by Date Reported (Old to New)</button>
+            <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'desc')">Sort by Date Reported (New to Old)</button>
+            <button type="button" class="btn btn-secondary" onclick="sortSnags('date_resolved', 'asc')">Sort by Date Resolved (Old to New)</button>
+            <button type="button" class="btn btn-secondary" onclick="sortSnags('date_resolved', 'desc')">Sort by Date Resolved (New to Old)</button>
         </div>
 
         <table class="table table-striped">
@@ -96,6 +109,7 @@
                     <th>Was it Reported Before?</th>
                     <th>Previous Date Reported</th>
                     <th>Previous Worker</th>
+                    <th>Recurring Count</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -103,6 +117,13 @@
                 <!-- Snags will be dynamically added here -->
             </tbody>
         </table>
+
+        <!-- Pagination controls -->
+        <div id="paginationControls" class="d-flex justify-content-center mt-3"></div>
+
+        <!-- Button to generate the PDF report -->
+        <button class="btn btn-info mb-3" onclick="generateReport()">Generate Report</button>
+        
         <div id="summary" class="card mt-5">
             <div class="card-body">
                 <h3 class="card-title">Summary</h3>
