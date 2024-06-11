@@ -1,4 +1,4 @@
-// script.js
+// JavaScript
 
 let editIndex = null;
 let snags = [];
@@ -115,7 +115,7 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
     snagTableBody.innerHTML = '';
 
     const filteredSnags = snags.filter(snag =>
-        (statusFilter === 'All' || snag.status === statusFilter) &&
+        (statusFilter === 'All' || (statusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === statusFilter)) &&
         (assigneeFilter === 'All' || snag.assigned_to === assigneeFilter)
     );
 
@@ -259,7 +259,9 @@ function formatDate(dateString) {
 // Function to generate the report
 function generateReport() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+        orientation: 'landscape'
+    });
     const dateGenerated = new Date().toLocaleDateString();
 
     doc.setFontSize(16);
@@ -271,7 +273,7 @@ function generateReport() {
 
     // Filter the snags based on current filters
     let filteredSnags = snags.filter(snag =>
-        (currentStatusFilter === 'All' || snag.status === currentStatusFilter) &&
+        (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
         (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter)
     );
 
@@ -289,6 +291,7 @@ function generateReport() {
         });
     }
 
+    // Prepare the main report data
     const reportData = filteredSnags.map(snag => [
         snag.id,
         snag.snag_details,
@@ -303,27 +306,15 @@ function generateReport() {
         snag.recurring_count
     ]);
 
+    // Add the main report table
     doc.autoTable({
         startY: 30,
         head: headers,
         body: reportData,
-        didDrawCell: (data) => {
-            // Add clickable links to the snag details column
-            if (data.column.index === 1 && data.cell.raw) {
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 255);
-                const link = filteredSnags[data.row.index].snag_link;
-                if (link) {
-                    // Properly position the link in the cell to avoid clustering
-                    const x = data.cell.x + 2; // Slight offset for padding
-                    const y = data.cell.y + (data.cell.height / 2); // Vertically centered in the cell
-                    doc.textWithLink(data.cell.raw, x, y, {
-                        url: link
-                    });
-                }
-                doc.setTextColor(0, 0, 0); // Reset the text color after adding the link
-            }
-        }
+        theme: 'striped',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        margin: { top: 30 }
     });
 
     doc.save('Snag_Tracking_Report.pdf');
