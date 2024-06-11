@@ -40,6 +40,7 @@ app.get('/snags', (req, res) => {
 app.post('/snags', (req, res) => {
     const {
         snag_details, 
+        snag_link,
         date_reported, 
         consultant_reporter_name, 
         assigned_to, 
@@ -47,17 +48,18 @@ app.post('/snags', (req, res) => {
         date_resolved, 
         was_it_reported_before, 
         previous_date_reported, 
-        previous_worker 
+        previous_worker,
+        recurring_count
     } = req.body;
 
     // Debug log for request body
     console.log("Received data for new snag:", req.body);
 
     const query = `INSERT INTO snags 
-        (snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved, was_it_reported_before, previous_date_reported, previous_worker) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved, was_it_reported_before, previous_date_reported, previous_worker, recurring_count) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    db.query(query, [snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null], (err, result) => {
+    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count], (err, result) => {
         if (err) {
             console.error("Error adding new snag:", err);
             res.status(500).send(err);
@@ -72,6 +74,7 @@ app.put('/snags/:id', (req, res) => {
     const { id } = req.params;
     const {
         snag_details, 
+        snag_link,
         date_reported, 
         consultant_reporter_name, 
         assigned_to, 
@@ -79,14 +82,15 @@ app.put('/snags/:id', (req, res) => {
         date_resolved, 
         was_it_reported_before, 
         previous_date_reported, 
-        previous_worker 
+        previous_worker,
+        recurring_count
     } = req.body;
 
     const query = `UPDATE snags 
-        SET snag_details = ?, date_reported = ?, consultant_reporter_name = ?, assigned_to = ?, status = ?, date_resolved = ?, was_it_reported_before = ?, previous_date_reported = ?, previous_worker = ? 
+        SET snag_details = ?, snag_link = ?, date_reported = ?, consultant_reporter_name = ?, assigned_to = ?, status = ?, date_resolved = ?, was_it_reported_before = ?, previous_date_reported = ?, previous_worker = ?, recurring_count = ? 
         WHERE id = ?`;
 
-    db.query(query, [snag_details, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, id], (err, result) => {
+    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count, id], (err, result) => {
         if (err) {
             console.error("Error updating snag:", err);
             res.status(500).send(err);

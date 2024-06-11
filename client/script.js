@@ -268,51 +268,65 @@ function generateReport() {
     doc.text(`Date Generated: ${dateGenerated}`, 10, 20);
 
     const headers = [['ID', 'Details', 'Reporter', 'Date Reported', 'Assigned To', 'Status', 'Date Resolved', 'Was it Reported Before?', 'Previous Date Reported', 'Previous Worker', 'Recurring Count']];
-    
-    // Fetch all snags to ensure the report includes everything, regardless of pagination
-    fetch('http://localhost:3000/snags')
-        .then(response => response.json())
-        .then(data => {
-            const reportData = data.map(snag => [
-                snag.id,
-                snag.snag_details,
-                snag.consultant_reporter_name,
-                formatDate(snag.date_reported),
-                snag.assigned_to,
-                snag.status,
-                formatDate(snag.date_resolved),
-                snag.was_it_reported_before ? 'Yes' : 'No',
-                formatDate(snag.previous_date_reported),
-                snag.previous_worker || '',
-                snag.recurring_count
-            ]);
 
-            doc.autoTable({
-                startY: 30,
-                head: headers,
-                body: reportData,
-                didDrawCell: (data) => {
-                    // Add clickable links to the snag details column
-                    if (data.column.index === 1 && data.cell.raw) {
-                        doc.setFontSize(10);
-                        doc.setTextColor(0, 0, 255);
-                        const link = snags[data.row.index].snag_link;
-                        if (link) {
-                            // Use cell's text position if available, otherwise fallback to cell's position
-                            const x = data.cell.textPos ? data.cell.textPos.x : data.cell.x + 2; // Adjust x if necessary
-                            const y = data.cell.textPos ? data.cell.textPos.y : data.cell.y + data.cell.height / 2; // Center y in cell
-                            doc.textWithLink(data.cell.raw, x, y, {
-                                url: link
-                            });
-                        }
-                        doc.setTextColor(0, 0, 0); // Reset the text color after adding the link
-                    }
+    // Filter the snags based on current filters
+    let filteredSnags = snags.filter(snag =>
+        (currentStatusFilter === 'All' || snag.status === currentStatusFilter) &&
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter)
+    );
+
+    // Sort the filtered snags by the current sort field and order
+    if (currentSortField && currentSortOrder) {
+        filteredSnags.sort((a, b) => {
+            const dateA = new Date(a[currentSortField]);
+            const dateB = new Date(b[currentSortField]);
+
+            if (currentSortOrder === 'asc') {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        });
+    }
+
+    const reportData = filteredSnags.map(snag => [
+        snag.id,
+        snag.snag_details,
+        snag.consultant_reporter_name,
+        formatDate(snag.date_reported),
+        snag.assigned_to,
+        snag.status,
+        formatDate(snag.date_resolved),
+        snag.was_it_reported_before ? 'Yes' : 'No',
+        formatDate(snag.previous_date_reported),
+        snag.previous_worker || '',
+        snag.recurring_count
+    ]);
+
+    doc.autoTable({
+        startY: 30,
+        head: headers,
+        body: reportData,
+        didDrawCell: (data) => {
+            // Add clickable links to the snag details column
+            if (data.column.index === 1 && data.cell.raw) {
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 255);
+                const link = filteredSnags[data.row.index].snag_link;
+                if (link) {
+                    // Properly position the link in the cell to avoid clustering
+                    const x = data.cell.x + 2; // Slight offset for padding
+                    const y = data.cell.y + (data.cell.height / 2); // Vertically centered in the cell
+                    doc.textWithLink(data.cell.raw, x, y, {
+                        url: link
+                    });
                 }
-            });
+                doc.setTextColor(0, 0, 0); // Reset the text color after adding the link
+            }
+        }
+    });
 
-            doc.save('Snag_Tracking_Report.pdf');
-        })
-        .catch(error => console.error('Error generating report:', error));
+    doc.save('Snag_Tracking_Report.pdf');
 }
 
 // Initial fetch
