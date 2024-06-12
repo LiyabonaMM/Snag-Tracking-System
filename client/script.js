@@ -6,6 +6,8 @@ let currentSortField = null;
 let currentSortOrder = null;
 let currentPage = 1;
 const snagsPerPage = 10;
+let currentStatusFilter = 'All';
+let currentAssigneeFilter = 'All';
 
 // Fetch snags from the server
 function fetchSnags() {
@@ -52,8 +54,6 @@ function addOrUpdateSnag() {
         recurring_count: recurringCount
     };
 
-    console.log("Adding or Updating Snag:", snag);
-
     if (editIndex !== null) {
         const id = snags[editIndex].id;
         fetch(`http://localhost:3000/snags/${id}`, {
@@ -64,7 +64,7 @@ function addOrUpdateSnag() {
             body: JSON.stringify(snag)
         })
         .then(() => {
-            snags[editIndex] = { ...snags[editIndex], ...snag }; // Update the local snags list immediately
+            snags[editIndex] = { ...snags[editIndex], ...snag };
             editIndex = null;
             renderSnagTable();
             updateSummary();
@@ -110,7 +110,7 @@ function sortSnags(field, order) {
 }
 
 // Render the snag table with filters
-function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
+function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = currentAssigneeFilter) {
     const snagTableBody = document.getElementById('snagTableBody');
     snagTableBody.innerHTML = '';
 
@@ -123,8 +123,6 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
     const startIndex = (currentPage - 1) * snagsPerPage;
     const endIndex = startIndex + snagsPerPage;
     const paginatedSnags = filteredSnags.slice(startIndex, endIndex);
-
-    console.log("Filtered Snags for Rendering:", paginatedSnags);
 
     paginatedSnags.forEach((snag, index) => {
         const row = document.createElement('tr');
@@ -141,7 +139,7 @@ function renderSnagTable(statusFilter = 'All', assigneeFilter = 'All') {
             <td>${snag.previous_worker || ''}</td>
             <td>${snag.recurring_count}</td>
             <td>
-                <button class="btn btn-success btn-sm" onclick="editSnag(${index + startIndex})">Edit</button>
+                <button class="btn btn-success btn-sm" onclick="editSnag(${filteredSnags.indexOf(snag) + startIndex})">Edit</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteSnag(${snag.id})">Delete</button>
                 <button class="btn btn-secondary btn-sm" onclick="closeSnag(${snag.id})">Close</button>
             </td>
@@ -177,7 +175,12 @@ function changePage(pageNumber) {
 }
 
 function editSnag(index) {
-    const snag = snags[index];
+    const filteredSnags = snags.filter(snag =>
+        (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter)
+    );
+
+    const snag = filteredSnags[index - (currentPage - 1) * snagsPerPage];
     document.getElementById('snagDetails').value = snag.snag_details;
     document.getElementById('snagLink').value = snag.snag_link;
     document.getElementById('consultantReporterName').value = snag.consultant_reporter_name;
@@ -188,9 +191,10 @@ function editSnag(index) {
     document.getElementById('wasItReportedBefore').value = snag.was_it_reported_before ? 'true' : 'false';
     document.getElementById('previousDateReported').value = snag.previous_date_reported || '';
     document.getElementById('previousWorker').value = snag.previous_worker || '';
-    document.getElementById('recurringCount').value = snag.recurring_count || 1; // Set recurring count
+    document.getElementById('recurringCount').value = snag.recurring_count || 1;
 
-    editIndex = index;
+    // Preserve the exact index of the selected snag for update
+    editIndex = snags.findIndex(s => s.id === snag.id);
 }
 
 function deleteSnag(id) {
@@ -218,7 +222,6 @@ function closeSnag(id) {
             body: JSON.stringify(snags[index])
         })
         .then(() => {
-            // Update the local snags list to reflect the resolved status immediately
             renderSnagTable();
             updateSummary();
         })
@@ -228,18 +231,19 @@ function closeSnag(id) {
 
 function filterSnags(status) {
     currentStatusFilter = status;
+    currentPage = 1; // Reset to first page when applying a new filter
     renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
-let currentAssigneeFilter = 'All';
 function filterByAssignee(assignee) {
     currentAssigneeFilter = assignee;
+    currentPage = 1; // Reset to first page when applying a new filter
     renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
-let currentStatusFilter = 'All';
 function filterByStatus(status) {
     currentStatusFilter = status;
+    currentPage = 1; // Reset to first page when applying a new filter
     renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
@@ -311,8 +315,7 @@ function generateReport() {
         startY: 30,
         head: headers,
         body: reportData,
-        theme: 'striped',
-        styles: { fontSize: 10 },
+        styles: { fontSize: 10, cellWidth: 'wrap' }, // Auto width for cells
         headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
         margin: { top: 30 }
     });
