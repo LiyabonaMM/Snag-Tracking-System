@@ -273,7 +273,7 @@ function generateReport() {
     doc.setFontSize(12);
     doc.text(`Date Generated: ${dateGenerated}`, 10, 20);
 
-    const headers = [['ID', 'Details', 'Reporter', 'Date Reported', 'Assigned To', 'Status', 'Date Resolved', 'Was it Reported Before?', 'Previous Date Reported', 'Previous Worker', 'Recurring Count']];
+    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Previous Date', 'Previous Worker', 'Recurring Count']];
 
     // Filter the snags based on current filters
     let filteredSnags = snags.filter(snag =>
@@ -315,7 +315,7 @@ function generateReport() {
         startY: 30,
         head: headers,
         body: reportData,
-        styles: { fontSize: 10, cellWidth: 'wrap' }, // Auto width for cells
+        styles: { fontSize: 10, cellWidth: 'auto' }, // Auto width for cells
         headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
         margin: { top: 30 }
     });
