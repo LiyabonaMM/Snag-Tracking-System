@@ -1,5 +1,3 @@
-// JavaScript
-
 let editIndex = null;
 let snags = [];
 let currentSortField = null;
@@ -8,13 +6,17 @@ let currentPage = 1;
 const snagsPerPage = 10;
 let currentStatusFilter = 'All';
 let currentAssigneeFilter = 'All';
+let searchTerm = ''; // Add a variable to hold the current search term
 
 // Fetch snags from the server
 function fetchSnags() {
     fetch('http://localhost:3000/snags')
         .then(response => response.json())
         .then(data => {
-            snags = data;
+            snags = data.map(snag => ({
+                ...snag,
+                date_resolved: snag.date_resolved ? new Date(snag.date_resolved).toISOString().split('T')[0] : null
+            }));
             renderSnagTable();
             updateSummary();
         })
@@ -54,6 +56,8 @@ function addOrUpdateSnag() {
         recurring_count: recurringCount
     };
 
+    const alertPlaceholder = document.getElementById('alertPlaceholder');
+    
     if (editIndex !== null) {
         const id = snags[editIndex].id;
         fetch(`http://localhost:3000/snags/${id}`, {
@@ -68,8 +72,12 @@ function addOrUpdateSnag() {
             editIndex = null;
             renderSnagTable();
             updateSummary();
+            showAlert('Snag updated successfully!', 'success', alertPlaceholder);
         })
-        .catch(error => console.error('Error updating snag:', error));
+        .catch(error => {
+            console.error('Error updating snag:', error);
+            showAlert('Failed to update snag. Please try again.', 'danger', alertPlaceholder);
+        });
     } else {
         fetch('http://localhost:3000/snags', {
             method: 'POST',
@@ -83,8 +91,12 @@ function addOrUpdateSnag() {
             snags.push(newSnag);
             renderSnagTable();
             updateSummary();
+            showAlert('Snag added successfully!', 'success', alertPlaceholder);
         })
-        .catch(error => console.error('Error adding snag:', error));
+        .catch(error => {
+            console.error('Error adding snag:', error);
+            showAlert('Failed to add snag. Please try again.', 'danger', alertPlaceholder);
+        });
     }
 
     document.getElementById('snagForm').reset();
@@ -109,14 +121,31 @@ function sortSnags(field, order) {
     renderSnagTable();
 }
 
-// Render the snag table with filters
+// Custom sort functions for each status
+function sortByStatus(targetStatus) {
+    snags.sort((a, b) => {
+        if (a.status === targetStatus) return -1;
+        if (b.status === targetStatus) return 1;
+        return 0; // Keep original order if neither matches the targetStatus
+    });
+
+    const otherSnags = snags.filter(snag => snag.status !== targetStatus).sort((a, b) => a.status.localeCompare(b.status));
+    snags = snags.filter(snag => snag.status === targetStatus).concat(otherSnags);
+    
+    renderSnagTable();
+}
+
+// Render the snag table with filters and search
 function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = currentAssigneeFilter) {
     const snagTableBody = document.getElementById('snagTableBody');
     snagTableBody.innerHTML = '';
 
     const filteredSnags = snags.filter(snag =>
         (statusFilter === 'All' || (statusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === statusFilter)) &&
-        (assigneeFilter === 'All' || snag.assigned_to === assigneeFilter)
+        (assigneeFilter === 'All' || snag.assigned_to === assigneeFilter) &&
+        (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     // Apply pagination
@@ -177,7 +206,10 @@ function changePage(pageNumber) {
 function editSnag(index) {
     const filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
-        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter)
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const snag = filteredSnags[index - (currentPage - 1) * snagsPerPage];
@@ -198,6 +230,7 @@ function editSnag(index) {
 }
 
 function deleteSnag(id) {
+    const alertPlaceholder = document.getElementById('alertPlaceholder');
     fetch(`http://localhost:3000/snags/${id}`, {
         method: 'DELETE'
     })
@@ -205,12 +238,17 @@ function deleteSnag(id) {
         snags = snags.filter(s => s.id !== id);
         renderSnagTable();
         updateSummary();
+        showAlert('Snag deleted successfully!', 'success', alertPlaceholder);
     })
-    .catch(error => console.error('Error deleting snag:', error));
+    .catch(error => {
+        console.error('Error deleting snag:', error);
+        showAlert('Failed to delete snag. Please try again.', 'danger', alertPlaceholder);
+    });
 }
 
 function closeSnag(id) {
     const index = snags.findIndex(s => s.id === id);
+    const alertPlaceholder = document.getElementById('alertPlaceholder');
     if (index !== -1) {
         snags[index].status = 'Resolved';
         snags[index].date_resolved = new Date().toISOString().split('T')[0]; // Set the current date as resolved date
@@ -221,32 +259,35 @@ function closeSnag(id) {
             },
             body: JSON.stringify(snags[index])
         })
-        .then(() => {
+        .then(response => response.json())
+        .then(updatedSnag => {
+            snags[index] = updatedSnag; // Update the local snags array with the server response
             renderSnagTable();
             updateSummary();
+            showAlert('Snag closed successfully!', 'success', alertPlaceholder);
         })
-        .catch(error => console.error('Error closing snag:', error));
+        .catch(error => {
+            console.error('Error closing snag:', error);
+            showAlert('Failed to close snag. Please try again.', 'danger', alertPlaceholder);
+        });
     }
 }
 
+// Filter snags by status
 function filterSnags(status) {
     currentStatusFilter = status;
     currentPage = 1; // Reset to first page when applying a new filter
     renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
+// Filter snags by assignee
 function filterByAssignee(assignee) {
     currentAssigneeFilter = assignee;
     currentPage = 1; // Reset to first page when applying a new filter
     renderSnagTable(currentStatusFilter, currentAssigneeFilter);
 }
 
-function filterByStatus(status) {
-    currentStatusFilter = status;
-    currentPage = 1; // Reset to first page when applying a new filter
-    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
-}
-
+// Update the summary
 function updateSummary() {
     document.getElementById('totalSnags').innerText = snags.length;
     document.getElementById('openSnags').innerText = snags.filter(s => s.status === 'To Do').length;
@@ -260,7 +301,6 @@ function formatDate(dateString) {
     return dateString ? new Date(dateString).toISOString().split('T')[0] : '';
 }
 
-// Function to generate the report
 function generateReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
@@ -268,17 +308,26 @@ function generateReport() {
     });
     const dateGenerated = new Date().toLocaleDateString();
 
-    doc.setFontSize(16);
-    doc.text('Snag Tracking Report', 10, 10);
+    // Report Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Snag Tracking Report', 10, 20);
+
+    // Date Generated
     doc.setFontSize(12);
-    doc.text(`Date Generated: ${dateGenerated}`, 10, 20);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date Generated: ${dateGenerated}`, 10, 30);
 
-    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Previous Date', 'Previous Worker', 'Recurring Count']];
+    // Table Headers
+    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count']];
 
-    // Filter the snags based on current filters
+    // Filter the snags based on current filters and search term
     let filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
-        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter)
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     // Sort the filtered snags by the current sort field and order
@@ -312,7 +361,7 @@ function generateReport() {
 
     // Add the main report table
     doc.autoTable({
-        startY: 30,
+        startY: 40,
         head: headers,
         body: reportData,
         styles: { fontSize: 10, cellWidth: 'auto' }, // Auto width for cells
@@ -320,8 +369,76 @@ function generateReport() {
         margin: { top: 30 }
     });
 
+    // Add additional pages if needed
+    doc.autoTable({
+        startY: doc.autoTable.previous.finalY + 10,
+        head: headers,
+        body: reportData,
+        styles: { fontSize: 10, cellWidth: 'auto' },
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        margin: { top: 30 },
+        pageBreak: 'auto' // Automatically add new pages
+    });
+
+    // Summary Section at the end
+    doc.addPage();
+    const summaryY = 20;
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary', 10, summaryY);
+
+    // Summary Content with styled boxes
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+
+    // Box settings
+    const boxX = 10;
+    const boxY = summaryY + 10;
+    const boxWidth = 55;
+    const boxHeight = 20;
+    const boxPadding = 2;
+    const spacing = 5; // Spacing between boxes
+
+    // Draw and fill boxes for each summary item
+    doc.setDrawColor(0);
+    doc.setFillColor(240, 240, 240);
+    doc.rect(boxX, boxY, boxWidth, boxHeight, 'FD');
+    doc.rect(boxX + boxWidth + spacing, boxY, boxWidth, boxHeight, 'FD');
+    doc.rect(boxX + 2 * (boxWidth + spacing), boxY, boxWidth, boxHeight, 'FD');
+    doc.rect(boxX + 3 * (boxWidth + spacing), boxY, boxWidth, boxHeight, 'FD');
+    doc.rect(boxX + 4 * (boxWidth + spacing), boxY, boxWidth, boxHeight, 'FD');
+
+    // Add summary text inside the boxes
+    doc.text(`Total Snags: ${snags.length}`, boxX + boxPadding, boxY + 12);
+    doc.text(`Open Snags: ${snags.filter(s => s.status === 'To Do').length}`, boxX + boxWidth + spacing + boxPadding, boxY + 12);
+    doc.text(`In Progress: ${snags.filter(s => s.status === 'In Progress').length}`, boxX + 2 * (boxWidth + spacing) + boxPadding, boxY + 12);
+    doc.text(`Awaiting Feedback: ${snags.filter(s => s.status === 'Awaiting Feedback').length}`, boxX + 3 * (boxWidth + spacing) + boxPadding, boxY + 12);
+    doc.text(`Resolved: ${snags.filter(s => s.status === 'Resolved').length}`, boxX + 4 * (boxWidth + spacing) + boxPadding, boxY + 12);
+
     doc.save('Snag_Tracking_Report.pdf');
 }
+
+
+// Function to display alert messages
+function showAlert(message, type, placeholder) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    `;
+    placeholder.appendChild(wrapper);
+}
+
+// Attach search input event listener
+document.getElementById('searchInput').addEventListener('input', function() {
+    searchTerm = this.value;
+    currentPage = 1; // Reset to first page when applying a new search term
+    renderSnagTable();
+});
 
 // Initial fetch
 fetchSnags();

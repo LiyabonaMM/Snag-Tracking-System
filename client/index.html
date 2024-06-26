@@ -8,10 +8,34 @@
     <link href="styles.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* Additional custom styles for improved layout */
+        .form-group label {
+            font-weight: bold;
+        }
+        .summary-box {
+            padding: 1em;
+            border-radius: 0.5em;
+            margin-bottom: 1em;
+        }
+        @media (max-width: 768px) {
+            .form-row > div {
+                margin-bottom: 1em;
+            }
+        }
+        .btn-filter-status, .btn-sort-status {
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4">Snag Tracking System</h1>
+
+        <!-- Alert placeholder -->
+        <div id="alertPlaceholder"></div>
+
         <form id="snagForm">
             <div class="form-row">
                 <div class="form-group col-md-4">
@@ -26,13 +50,14 @@
                     <label for="consultantReporterName">Consultant/Reporter Name</label>
                     <input type="text" class="form-control" id="consultantReporterName" placeholder="Consultant/Reporter Name" required>
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="dateReported">Date Reported</label>
                     <input type="date" class="form-control" id="dateReported" required>
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="assignedTo">Assigned To</label>
                     <select class="form-control" id="assignedTo" required>
+                        <option value="">Select</option>
                         <option value="Jay Slinger">Jay Slinger</option>
                         <option value="George Manyara">George Manyara</option>
                         <option value="Sam Nakale">Sam Nakale</option>
@@ -44,35 +69,36 @@
                         <option value="Raess Manuel">Raess Manuel</option>
                     </select>
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="status">Status</label>
                     <select class="form-control" id="status" required>
+                        <option value="">Select</option>
                         <option>To Do</option>
                         <option>In Progress</option>
                         <option>Awaiting Feedback</option>
                         <option>Resolved</option>
                     </select>
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="dateResolved">Date Resolved</label>
                     <input type="date" class="form-control" id="dateResolved">
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="wasItReportedBefore">Was it Reported Before?</label>
                     <select class="form-control" id="wasItReportedBefore" required>
                         <option value="false">No</option>
                         <option value="true">Yes</option>
                     </select>
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="previousDateReported">Previous Date Reported</label>
                     <input type="date" class="form-control" id="previousDateReported">
                 </div>
-                <div class="form-group col-md-4">
+                <div class="form-group col-md-3">
                     <label for="previousWorker">If yes, who worked on it?</label>
                     <input type="text" class="form-control" id="previousWorker" placeholder="Previous Worker">
                 </div>
-                <div class="form-group col-md-2">
+                <div class="form-group col-md-3">
                     <label for="recurringCount">Recurring Count</label>
                     <input type="number" class="form-control" id="recurringCount" min="1" value="1">
                 </div>
@@ -80,36 +106,47 @@
             <button type="submit" class="btn btn-primary mb-2">Add Snag</button>
         </form>
 
-        <div class="btn-group mb-3" role="group" aria-label="Filter">
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('All')">All</button>
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('To Do')">To Do</button>
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('In Progress')">In Progress</button>
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('Awaiting Feedback')">Awaiting Feedback</button>
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('Resolved')">Resolved</button>
-            <button type="button" class="btn btn-secondary" onclick="filterSnags('Recurring')">Recurring</button>
+        <!-- Search bar -->
+        <div class="input-group mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search snags...">
         </div>
 
+        <!-- Filter buttons -->
+        <div class="btn-group mb-3" role="group" aria-label="Filter">
+            <button type="button" class="btn btn-secondary btn-filter-status" onclick="filterSnags('All')">All</button>
+            <button type="button" class="btn btn-primary btn-filter-status" onclick="filterSnags('To Do')">To Do</button>
+            <button type="button" class="btn btn-info btn-filter-status" onclick="filterSnags('In Progress')">In Progress</button>
+            <button type="button" class="btn btn-warning btn-filter-status" onclick="filterSnags('Awaiting Feedback')">Awaiting Feedback</button>
+            <button type="button" class="btn btn-success btn-filter-status" onclick="filterSnags('Resolved')">Resolved</button>
+            <button type="button" class="btn btn-danger btn-filter-status" onclick="filterSnags('Recurring')">Recurring</button>
+        </div>
+
+        <!-- Sort buttons -->
         <div class="btn-group mb-3" role="group" aria-label="Sort">
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'asc')">Sort by Date Reported (Old to New)</button>
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'desc')">Sort by Date Reported (New to Old)</button>
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_resolved', 'asc')">Sort by Date Resolved (Old to New)</button>
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_resolved', 'desc')">Sort by Date Resolved (New to Old)</button>
+            <button type="button" class="btn btn-primary btn-sort-status" onclick="sortByStatus('To Do')">Sort by To Do</button>
+            <button type="button" class="btn btn-info btn-sort-status" onclick="sortByStatus('In Progress')">Sort by In Progress</button>
+            <button type="button" class="btn btn-warning btn-sort-status" onclick="sortByStatus('Awaiting Feedback')">Sort by Awaiting Feedback</button>
+            <button type="button" class="btn btn-success btn-sort-status" onclick="sortByStatus('Resolved')">Sort by Resolved</button>
         </div>
 
-        <table class="table table-striped">
-            <thead>
+        <table class="table table-striped table-responsive-sm">
+            <thead class="thead-dark">
                 <tr>
                     <th>ID</th>
                     <th>Snag Details</th>
-                    <th>Consultant/Reporter Name</th>
+                    <th>Reporter</th>
                     <th>Reported</th>
                     <th>Assigned</th>
                     <th>Status</th>
                     <th>Resolved</th>
                     <th>Recurring</th>
-                    <th>Previous Date</th>
-                    <th>Previous Worker</th>
-                    <th>Recurring Count</th>
+                    <th>Previous/D</th>
+                    <th>Previous/W</th>
+                    <th>Count/R</th>
                     <th>Actions</th>
                 </tr>
             </thead>
