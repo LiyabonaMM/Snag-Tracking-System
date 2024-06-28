@@ -1,27 +1,30 @@
 let editIndex = null;
 let snags = [];
 let currentSortField = null;
-let currentSortOrder = null;
+let currentSortOrder = 'desc';
 let currentPage = 1;
 const snagsPerPage = 10;
 let currentStatusFilter = 'All';
 let currentAssigneeFilter = 'All';
-let searchTerm = ''; // Add a variable to hold the current search term
+let searchTerm = '';
+let startDateFilter = '';
+let endDateFilter = '';
 
-// Fetch snags from the server
 function fetchSnags() {
     fetch('http://localhost:3000/snags')
         .then(response => response.json())
         .then(data => {
             snags = data.map(snag => ({
                 ...snag,
-                date_resolved: snag.date_resolved ? new Date(snag.date_resolved).toISOString().split('T')[0] : null
+                date_reported: new Date(snag.date_reported).toLocaleDateString('en-CA'),
+                date_resolved: snag.date_resolved ? new Date(snag.date_resolved).toLocaleDateString('en-CA') : null
             }));
             renderSnagTable();
             updateSummary();
         })
         .catch(error => console.error('Error fetching snags:', error));
 }
+
 
 // Handle form submission for adding or updating a snag
 document.getElementById('snagForm').addEventListener('submit', function(e) {
@@ -33,31 +36,38 @@ function addOrUpdateSnag() {
     const snagDetails = document.getElementById('snagDetails').value;
     const snagLink = document.getElementById('snagLink').value;
     const consultantReporterName = document.getElementById('consultantReporterName').value;
-    const dateReported = document.getElementById('dateReported').value;
+    const dateReported = new Date(document.getElementById('dateReported').value);
     const assignedTo = document.getElementById('assignedTo').value;
     const status = document.getElementById('status').value;
-    const dateResolved = document.getElementById('dateResolved').value;
+    const issueType = document.getElementById('issueType').value;
+    const dateResolved = document.getElementById('dateResolved').value ? new Date(document.getElementById('dateResolved').value) : null;
     const wasItReportedBefore = document.getElementById('wasItReportedBefore').value === 'true';
-    const previousDateReported = document.getElementById('previousDateReported').value;
+    const previousDateReported = document.getElementById('previousDateReported').value ? new Date(document.getElementById('previousDateReported').value) : null;
     const previousWorker = document.getElementById('previousWorker').value;
     const recurringCount = parseInt(document.getElementById('recurringCount').value, 10) || 1;
+
+    // Adjust dates to South Africa timezone (UTC+2)
+    const formattedDateReported = new Date(dateReported.getTime() - (dateReported.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const formattedDateResolved = dateResolved ? new Date(dateResolved.getTime() - (dateResolved.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null;
+    const formattedPreviousDateReported = previousDateReported ? new Date(previousDateReported.getTime() - (previousDateReported.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null;
 
     const snag = {
         snag_details: snagDetails,
         snag_link: snagLink,
         consultant_reporter_name: consultantReporterName,
-        date_reported: dateReported,
+        date_reported: formattedDateReported,
         assigned_to: assignedTo,
         status: status,
-        date_resolved: dateResolved || null,
+        issue_type: issueType,
+        date_resolved: formattedDateResolved,
         was_it_reported_before: wasItReportedBefore,
-        previous_date_reported: previousDateReported || null,
+        previous_date_reported: formattedPreviousDateReported,
         previous_worker: previousWorker || null,
         recurring_count: recurringCount
     };
 
     const alertPlaceholder = document.getElementById('alertPlaceholder');
-    
+
     if (editIndex !== null) {
         const id = snags[editIndex].id;
         fetch(`http://localhost:3000/snags/${id}`, {
@@ -131,7 +141,7 @@ function sortByStatus(targetStatus) {
 
     const otherSnags = snags.filter(snag => snag.status !== targetStatus).sort((a, b) => a.status.localeCompare(b.status));
     snags = snags.filter(snag => snag.status === targetStatus).concat(otherSnags);
-    
+
     renderSnagTable();
 }
 
@@ -143,6 +153,8 @@ function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = cu
     const filteredSnags = snags.filter(snag =>
         (statusFilter === 'All' || (statusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === statusFilter)) &&
         (assigneeFilter === 'All' || snag.assigned_to === assigneeFilter) &&
+        (!startDateFilter || new Date(snag.date_reported) >= new Date(startDateFilter)) &&
+        (!endDateFilter || new Date(snag.date_reported) <= new Date(endDateFilter)) &&
         (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -167,6 +179,7 @@ function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = cu
             <td>${formatDate(snag.previous_date_reported)}</td>
             <td>${snag.previous_worker || ''}</td>
             <td>${snag.recurring_count}</td>
+            <td>${snag.issue_type || ''}</td>
             <td>
                 <button class="btn btn-success btn-sm" onclick="editSnag(${filteredSnags.indexOf(snag) + startIndex})">Edit</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteSnag(${snag.id})">Delete</button>
@@ -207,6 +220,8 @@ function editSnag(index) {
     const filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
         (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (!startDateFilter || new Date(snag.date_reported) >= new Date(startDateFilter)) &&
+        (!endDateFilter || new Date(snag.date_reported) <= new Date(endDateFilter)) &&
         (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -219,6 +234,7 @@ function editSnag(index) {
     document.getElementById('dateReported').value = snag.date_reported;
     document.getElementById('assignedTo').value = snag.assigned_to;
     document.getElementById('status').value = snag.status;
+    document.getElementById('issueType').value = snag.issue_type;
     document.getElementById('dateResolved').value = snag.date_resolved || '';
     document.getElementById('wasItReportedBefore').value = snag.was_it_reported_before ? 'true' : 'false';
     document.getElementById('previousDateReported').value = snag.previous_date_reported || '';
@@ -273,18 +289,24 @@ function closeSnag(id) {
     }
 }
 
-// Filter snags by status
-function filterSnags(status) {
-    currentStatusFilter = status;
-    currentPage = 1; // Reset to first page when applying a new filter
-    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
+// Filter snags by date range
+function filterByDate() {
+    startDateFilter = document.getElementById('startDate').value;
+    endDateFilter = document.getElementById('endDate').value;
+    currentPage = 1;
+    renderSnagTable();
 }
 
-// Filter snags by assignee
-function filterByAssignee(assignee) {
-    currentAssigneeFilter = assignee;
-    currentPage = 1; // Reset to first page when applying a new filter
-    renderSnagTable(currentStatusFilter, currentAssigneeFilter);
+// Clear all filters
+function clearFilters() {
+    currentStatusFilter = 'All';
+    currentAssigneeFilter = 'All';
+    startDateFilter = '';
+    endDateFilter = '';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    currentPage = 1;
+    renderSnagTable();
 }
 
 // Update the summary
@@ -301,48 +323,43 @@ function formatDate(dateString) {
     return dateString ? new Date(dateString).toISOString().split('T')[0] : '';
 }
 
+// Function to generate the report with summary
 function generateReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: 'landscape'
     });
     const dateGenerated = new Date().toLocaleDateString();
+    const periodFrom = startDateFilter ? formatDate(startDateFilter) : 'N/A';
+    const periodTo = endDateFilter ? formatDate(endDateFilter) : 'N/A';
 
     // Report Title
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text('Snag Tracking Report', 10, 20);
 
-    // Date Generated
+    // Date Generated and Period
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text(`Date Generated: ${dateGenerated}`, 10, 30);
+    doc.text(`Period From: ${periodFrom} To: ${periodTo}`, 10, 40);
 
     // Table Headers
-    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count']];
+    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']];
 
     // Filter the snags based on current filters and search term
     let filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
         (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (!startDateFilter || new Date(snag.date_reported) >= new Date(startDateFilter)) &&
+        (!endDateFilter || new Date(snag.date_reported) <= new Date(endDateFilter)) &&
         (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // Sort the filtered snags by the current sort field and order
-    if (currentSortField && currentSortOrder) {
-        filteredSnags.sort((a, b) => {
-            const dateA = new Date(a[currentSortField]);
-            const dateB = new Date(b[currentSortField]);
-
-            if (currentSortOrder === 'asc') {
-                return dateA - dateB;
-            } else {
-                return dateB - dateA;
-            }
-        });
-    }
+    // Sort the filtered snags by date_reported in descending order
+    filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
 
     // Prepare the main report data
     const reportData = filteredSnags.map(snag => [
@@ -356,12 +373,13 @@ function generateReport() {
         snag.was_it_reported_before ? 'Yes' : 'No',
         formatDate(snag.previous_date_reported),
         snag.previous_worker || '',
-        snag.recurring_count
+        snag.recurring_count,
+        snag.issue_type
     ]);
 
     // Add the main report table
     doc.autoTable({
-        startY: 40,
+        startY: 50,
         head: headers,
         body: reportData,
         styles: { fontSize: 10, cellWidth: 'auto' }, // Auto width for cells
@@ -369,20 +387,8 @@ function generateReport() {
         margin: { top: 30 }
     });
 
-    // Add additional pages if needed
-    doc.autoTable({
-        startY: doc.autoTable.previous.finalY + 10,
-        head: headers,
-        body: reportData,
-        styles: { fontSize: 10, cellWidth: 'auto' },
-        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-        margin: { top: 30 },
-        pageBreak: 'auto' // Automatically add new pages
-    });
-
     // Summary Section at the end
-    doc.addPage();
-    const summaryY = 20;
+    const summaryY = doc.autoTable.previous.finalY + 10;
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Summary', 10, summaryY);
@@ -418,7 +424,6 @@ function generateReport() {
     doc.save('Snag_Tracking_Report.pdf');
 }
 
-
 // Function to display alert messages
 function showAlert(message, type, placeholder) {
     const wrapper = document.createElement('div');
@@ -440,5 +445,97 @@ document.getElementById('searchInput').addEventListener('input', function() {
     renderSnagTable();
 });
 
+// Export to Excel
+function exportToExcel() {
+    const filteredSnags = snags.filter(snag =>
+        (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (!startDateFilter || new Date(snag.date_reported) >= new Date(startDateFilter)) &&
+        (!endDateFilter || new Date(snag.date_reported) <= new Date(endDateFilter)) &&
+        (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const sortedSnags = filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
+
+    const ws_data = [
+        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']
+    ];
+
+    sortedSnags.forEach(snag => {
+        ws_data.push([
+            snag.id,
+            snag.snag_details,
+            snag.consultant_reporter_name,
+            formatDate(snag.date_reported),
+            snag.assigned_to,
+            snag.status,
+            formatDate(snag.date_resolved),
+            snag.was_it_reported_before ? 'Yes' : 'No',
+            formatDate(snag.previous_date_reported),
+            snag.previous_worker || '',
+            snag.recurring_count,
+            snag.issue_type
+        ]);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Snags');
+    XLSX.writeFile(wb, 'Snag_Tracking_Report.xlsx');
+}
+
+// Export to CSV
+function exportToCSV() {
+    const filteredSnags = snags.filter(snag =>
+        (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
+        (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
+        (!startDateFilter || new Date(snag.date_reported) >= new Date(startDateFilter)) &&
+        (!endDateFilter || new Date(snag.date_reported) <= new Date(endDateFilter)) &&
+        (snag.snag_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.consultant_reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const sortedSnags = filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
+
+    const ws_data = [
+        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']
+    ];
+
+    sortedSnags.forEach(snag => {
+        ws_data.push([
+            snag.id,
+            snag.snag_details,
+            snag.consultant_reporter_name,
+            formatDate(snag.date_reported),
+            snag.assigned_to,
+            snag.status,
+            formatDate(snag.date_resolved),
+            snag.was_it_reported_before ? 'Yes' : 'No',
+            formatDate(snag.previous_date_reported),
+            snag.previous_worker || '',
+            snag.recurring_count,
+            snag.issue_type
+        ]);
+    });
+
+    let csvContent = 'data:text/csv;charset=utf-8,';
+    ws_data.forEach(row => {
+        csvContent += row.join(',') + '\r\n';
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'Snag_Tracking_Report.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // Initial fetch
 fetchSnags();
+// THEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE 
