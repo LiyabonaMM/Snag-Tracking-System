@@ -45,6 +45,7 @@ app.post('/snags', (req, res) => {
         consultant_reporter_name, 
         assigned_to, 
         status, 
+        issue_type, // New field
         date_resolved, 
         was_it_reported_before, 
         previous_date_reported, 
@@ -56,10 +57,10 @@ app.post('/snags', (req, res) => {
     console.log("Received data for new snag:", req.body);
 
     const query = `INSERT INTO snags 
-        (snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved, was_it_reported_before, previous_date_reported, previous_worker, recurring_count) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, issue_type, date_resolved, was_it_reported_before, previous_date_reported, previous_worker, recurring_count) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count], (err, result) => {
+    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, issue_type, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count], (err, result) => {
         if (err) {
             console.error("Error adding new snag:", err);
             res.status(500).send(err);
@@ -79,6 +80,7 @@ app.put('/snags/:id', (req, res) => {
         consultant_reporter_name, 
         assigned_to, 
         status, 
+        issue_type, // New field
         date_resolved, 
         was_it_reported_before, 
         previous_date_reported, 
@@ -87,10 +89,10 @@ app.put('/snags/:id', (req, res) => {
     } = req.body;
 
     const query = `UPDATE snags 
-        SET snag_details = ?, snag_link = ?, date_reported = ?, consultant_reporter_name = ?, assigned_to = ?, status = ?, date_resolved = ?, was_it_reported_before = ?, previous_date_reported = ?, previous_worker = ?, recurring_count = ? 
+        SET snag_details = ?, snag_link = ?, date_reported = ?, consultant_reporter_name = ?, assigned_to = ?, status = ?, issue_type = ?, date_resolved = ?, was_it_reported_before = ?, previous_date_reported = ?, previous_worker = ?, recurring_count = ? 
         WHERE id = ?`;
 
-    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count, id], (err, result) => {
+    db.query(query, [snag_details, snag_link, date_reported, consultant_reporter_name, assigned_to, status, issue_type, date_resolved || null, was_it_reported_before, previous_date_reported || null, previous_worker || null, recurring_count, id], (err, result) => {
         if (err) {
             console.error("Error updating snag:", err);
             res.status(500).send(err);
