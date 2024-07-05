@@ -10,7 +10,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
-        /* Additional custom styles for improved layout */
         .form-group label {
             font-weight: bold;
         }
@@ -28,15 +27,18 @@
             margin-right: 5px;
             margin-bottom: 5px;
         }
+        .calendar-button {
+            margin-top: 1em;
+        }
+        #calendar {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4">MyTalent Snag Tracking System</h1>
-
-        <!-- Alert placeholder -->
         <div id="alertPlaceholder"></div>
-
         <form id="snagForm">
             <div class="form-row">
                 <div class="form-group col-md-4">
@@ -121,13 +123,9 @@
             </div>
             <button type="submit" class="btn btn-primary mb-2">Add Snag</button>
         </form>
-
-        <!-- Search bar -->
         <div class="input-group mb-3">
             <input type="text" id="searchInput" class="form-control" placeholder="Search snags...">
         </div>
-
-        <!-- Filter buttons -->
         <div class="btn-group mb-3" role="group" aria-label="Filter">
             <button type="button" class="btn btn-secondary btn-filter-status" onclick="filterSnags('All')">All</button>
             <button type="button" class="btn btn-primary btn-filter-status" onclick="filterSnags('To Do')">To Do</button>
@@ -136,8 +134,6 @@
             <button type="button" class="btn btn-success btn-filter-status" onclick="filterSnags('Resolved')">Resolved</button>
             <button type="button" class="btn btn-danger btn-filter-status" onclick="filterSnags('Recurring')">Recurring</button>
         </div>
-
-        <!-- Sort buttons -->
         <div class="btn-group mb-3" role="group" aria-label="Sort">
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'asc')">Sort by Date Reported (Old to New)</button>
             <button type="button" class="btn btn-secondary" onclick="sortSnags('date_reported', 'desc')">Sort by Date Reported (New to Old)</button>
@@ -148,8 +144,6 @@
             <button type="button" class="btn btn-warning btn-sort-status" onclick="sortByStatus('Awaiting Feedback')">Sort by Awaiting Feedback</button>
             <button type="button" class="btn btn-success btn-sort-status" onclick="sortByStatus('Resolved')">Sort by Resolved</button>
         </div>
-
-        <!-- Date range filter -->
         <div class="form-row mb-3">
             <div class="form-group col-md-4">
                 <label for="startDate">Start Date</label>
@@ -161,7 +155,6 @@
             </div>
             <button type="button" class="btn btn-primary mb-2" onclick="filterByDate()">Filter</button>
         </div>
-
         <table class="table table-striped table-responsive-sm">
             <thead class="thead-dark">
                 <tr>
@@ -180,17 +173,12 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody id="snagTableBody">
-                <!-- Snags will be dynamically added here -->
-            </tbody>
+            <tbody id="snagTableBody"></tbody>
         </table>
-
         <div id="paginationControls" class="d-flex justify-content-center mt-3"></div>
-
-        <button class="btn btn-info mb-3" onclick="generateReport()">Generate Report</button>
+        <button class="btn btn-info mb-3" onclick="generateReport()">Export to PDF</button>
         <button class="btn btn-success mb-3" onclick="exportToExcel()">Export to Excel</button>
         <button class="btn btn-warning mb-3" onclick="exportToCSV()">Export to CSV</button>
-        
         <div id="summary" class="card mt-5">
             <div class="card-body">
                 <h3 class="card-title">Summary</h3>
@@ -228,8 +216,29 @@
                 </div>
             </div>
         </div>
+        <div class="calendar-button">
+            <button class="btn btn-primary" onclick="openCalendar()">Open Calendar</button>
+        </div>
+        <div id="calendarModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Snags Calendar</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="calendar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css">
     <script src="script.js"></script>
 </body>
 </html>

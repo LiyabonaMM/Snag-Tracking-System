@@ -25,8 +25,6 @@ function fetchSnags() {
         .catch(error => console.error('Error fetching snags:', error));
 }
 
-
-// Handle form submission for adding or updating a snag
 document.getElementById('snagForm').addEventListener('submit', function(e) {
     e.preventDefault();
     addOrUpdateSnag();
@@ -46,7 +44,6 @@ function addOrUpdateSnag() {
     const previousWorker = document.getElementById('previousWorker').value;
     const recurringCount = parseInt(document.getElementById('recurringCount').value, 10) || 1;
 
-    // Adjust dates to South Africa timezone (UTC+2)
     const formattedDateReported = new Date(dateReported.getTime() - (dateReported.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     const formattedDateResolved = dateResolved ? new Date(dateResolved.getTime() - (dateResolved.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null;
     const formattedPreviousDateReported = previousDateReported ? new Date(previousDateReported.getTime() - (previousDateReported.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null;
@@ -112,7 +109,6 @@ function addOrUpdateSnag() {
     document.getElementById('snagForm').reset();
 }
 
-// Sort snags based on the specified field and order
 function sortSnags(field, order) {
     currentSortField = field;
     currentSortOrder = order;
@@ -131,21 +127,16 @@ function sortSnags(field, order) {
     renderSnagTable();
 }
 
-// Custom sort functions for each status
 function sortByStatus(targetStatus) {
     snags.sort((a, b) => {
         if (a.status === targetStatus) return -1;
         if (b.status === targetStatus) return 1;
-        return 0; // Keep original order if neither matches the targetStatus
+        return 0;
     });
-
-    const otherSnags = snags.filter(snag => snag.status !== targetStatus).sort((a, b) => a.status.localeCompare(b.status));
-    snags = snags.filter(snag => snag.status === targetStatus).concat(otherSnags);
 
     renderSnagTable();
 }
 
-// Render the snag table with filters and search
 function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = currentAssigneeFilter) {
     const snagTableBody = document.getElementById('snagTableBody');
     snagTableBody.innerHTML = '';
@@ -160,7 +151,6 @@ function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = cu
         snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // Apply pagination
     const startIndex = (currentPage - 1) * snagsPerPage;
     const endIndex = startIndex + snagsPerPage;
     const paginatedSnags = filteredSnags.slice(startIndex, endIndex);
@@ -192,7 +182,6 @@ function renderSnagTable(statusFilter = currentStatusFilter, assigneeFilter = cu
     renderPagination(filteredSnags.length);
 }
 
-// Render pagination controls
 function renderPagination(totalItems) {
     const paginationControls = document.getElementById('paginationControls');
     paginationControls.innerHTML = '';
@@ -210,7 +199,6 @@ function renderPagination(totalItems) {
     }
 }
 
-// Change to the specified page
 function changePage(pageNumber) {
     currentPage = pageNumber;
     renderSnagTable();
@@ -241,7 +229,6 @@ function editSnag(index) {
     document.getElementById('previousWorker').value = snag.previous_worker || '';
     document.getElementById('recurringCount').value = snag.recurring_count || 1;
 
-    // Preserve the exact index of the selected snag for update
     editIndex = snags.findIndex(s => s.id === snag.id);
 }
 
@@ -267,7 +254,7 @@ function closeSnag(id) {
     const alertPlaceholder = document.getElementById('alertPlaceholder');
     if (index !== -1) {
         snags[index].status = 'Resolved';
-        snags[index].date_resolved = new Date().toISOString().split('T')[0]; // Set the current date as resolved date
+        snags[index].date_resolved = new Date().toISOString().split('T')[0];
         fetch(`http://localhost:3000/snags/${id}`, {
             method: 'PUT',
             headers: {
@@ -277,7 +264,7 @@ function closeSnag(id) {
         })
         .then(response => response.json())
         .then(updatedSnag => {
-            snags[index] = updatedSnag; // Update the local snags array with the server response
+            snags[index] = updatedSnag;
             renderSnagTable();
             updateSummary();
             showAlert('Snag closed successfully!', 'success', alertPlaceholder);
@@ -289,7 +276,6 @@ function closeSnag(id) {
     }
 }
 
-// Filter snags by date range
 function filterByDate() {
     startDateFilter = document.getElementById('startDate').value;
     endDateFilter = document.getElementById('endDate').value;
@@ -297,7 +283,6 @@ function filterByDate() {
     renderSnagTable();
 }
 
-// Clear all filters
 function clearFilters() {
     currentStatusFilter = 'All';
     currentAssigneeFilter = 'All';
@@ -309,7 +294,6 @@ function clearFilters() {
     renderSnagTable();
 }
 
-// Update the summary
 function updateSummary() {
     document.getElementById('totalSnags').innerText = snags.length;
     document.getElementById('openSnags').innerText = snags.filter(s => s.status === 'To Do').length;
@@ -318,12 +302,10 @@ function updateSummary() {
     document.getElementById('resolvedSnags').innerText = snags.filter(s => s.status === 'Resolved').length;
 }
 
-// Format date to exclude time
 function formatDate(dateString) {
     return dateString ? new Date(dateString).toISOString().split('T')[0] : '';
 }
 
-// Function to generate the report with summary
 function generateReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
@@ -333,21 +315,17 @@ function generateReport() {
     const periodFrom = startDateFilter ? formatDate(startDateFilter) : 'N/A';
     const periodTo = endDateFilter ? formatDate(endDateFilter) : 'N/A';
 
-    // Report Title
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text('Snag Tracking Report', 10, 20);
 
-    // Date Generated and Period
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text(`Date Generated: ${dateGenerated}`, 10, 30);
     doc.text(`Period From: ${periodFrom} To: ${periodTo}`, 10, 40);
 
-    // Table Headers
-    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']];
+    const headers = [['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Issue Type', 'Recurring Count']];
 
-    // Filter the snags based on current filters and search term
     let filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
         (currentAssigneeFilter === 'All' || snag.assigned_to === currentAssigneeFilter) &&
@@ -358,10 +336,8 @@ function generateReport() {
         snag.snag_link.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // Sort the filtered snags by date_reported in descending order
     filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
 
-    // Prepare the main report data
     const reportData = filteredSnags.map(snag => [
         snag.id,
         snag.snag_details,
@@ -373,39 +349,34 @@ function generateReport() {
         snag.was_it_reported_before ? 'Yes' : 'No',
         formatDate(snag.previous_date_reported),
         snag.previous_worker || '',
-        snag.recurring_count,
-        snag.issue_type
+        snag.issue_type,
+        snag.recurring_count
     ]);
 
-    // Add the main report table
     doc.autoTable({
         startY: 50,
         head: headers,
         body: reportData,
-        styles: { fontSize: 10, cellWidth: 'auto' }, // Auto width for cells
+        styles: { fontSize: 10, cellWidth: 'auto' },
         headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
         margin: { top: 30 }
     });
 
-    // Summary Section at the end
     const summaryY = doc.autoTable.previous.finalY + 10;
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Summary', 10, summaryY);
 
-    // Summary Content with styled boxes
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
 
-    // Box settings
     const boxX = 10;
     const boxY = summaryY + 10;
     const boxWidth = 55;
     const boxHeight = 20;
     const boxPadding = 2;
-    const spacing = 5; // Spacing between boxes
+    const spacing = 5;
 
-    // Draw and fill boxes for each summary item
     doc.setDrawColor(0);
     doc.setFillColor(240, 240, 240);
     doc.rect(boxX, boxY, boxWidth, boxHeight, 'FD');
@@ -414,7 +385,6 @@ function generateReport() {
     doc.rect(boxX + 3 * (boxWidth + spacing), boxY, boxWidth, boxHeight, 'FD');
     doc.rect(boxX + 4 * (boxWidth + spacing), boxY, boxWidth, boxHeight, 'FD');
 
-    // Add summary text inside the boxes
     doc.text(`Total Snags: ${snags.length}`, boxX + boxPadding, boxY + 12);
     doc.text(`Open Snags: ${snags.filter(s => s.status === 'To Do').length}`, boxX + boxWidth + spacing + boxPadding, boxY + 12);
     doc.text(`In Progress: ${snags.filter(s => s.status === 'In Progress').length}`, boxX + 2 * (boxWidth + spacing) + boxPadding, boxY + 12);
@@ -424,28 +394,6 @@ function generateReport() {
     doc.save('Snag_Tracking_Report.pdf');
 }
 
-// Function to display alert messages
-function showAlert(message, type, placeholder) {
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-    `;
-    placeholder.appendChild(wrapper);
-}
-
-// Attach search input event listener
-document.getElementById('searchInput').addEventListener('input', function() {
-    searchTerm = this.value;
-    currentPage = 1; // Reset to first page when applying a new search term
-    renderSnagTable();
-});
-
-// Export to Excel
 function exportToExcel() {
     const filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
@@ -460,7 +408,7 @@ function exportToExcel() {
     const sortedSnags = filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
 
     const ws_data = [
-        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']
+        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Issue Type', 'Recurring Count']
     ];
 
     sortedSnags.forEach(snag => {
@@ -475,19 +423,21 @@ function exportToExcel() {
             snag.was_it_reported_before ? 'Yes' : 'No',
             formatDate(snag.previous_date_reported),
             snag.previous_worker || '',
-            snag.recurring_count,
-            snag.issue_type
+            snag.issue_type,
+            snag.recurring_count
         ]);
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
+    const maxLength = ws_data[0].map((_, colIndex) => Math.max(...ws_data.map(row => (row[colIndex] || '').toString().length)));
+    ws['!cols'] = maxLength.map(len => ({ wch: len + 2 }));
+
     XLSX.utils.book_append_sheet(wb, ws, 'Snags');
     XLSX.writeFile(wb, 'Snag_Tracking_Report.xlsx');
 }
 
-// Export to CSV
 function exportToCSV() {
     const filteredSnags = snags.filter(snag =>
         (currentStatusFilter === 'All' || (currentStatusFilter === 'Recurring' ? snag.recurring_count >= 2 : snag.status === currentStatusFilter)) &&
@@ -502,23 +452,23 @@ function exportToCSV() {
     const sortedSnags = filteredSnags.sort((a, b) => new Date(b.date_reported) - new Date(a.date_reported));
 
     const ws_data = [
-        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Recurring Count', 'Issue Type']
+        ['ID', 'Details', 'Reporter', 'Reported', 'Assigned', 'Status', 'Resolved', 'Reported Before?', 'Date Reported', 'Previous Worker', 'Issue Type', 'Recurring Count']
     ];
 
     sortedSnags.forEach(snag => {
         ws_data.push([
             snag.id,
-            snag.snag_details,
-            snag.consultant_reporter_name,
+            `"${snag.snag_details}"`,
+            `"${snag.consultant_reporter_name}"`,
             formatDate(snag.date_reported),
-            snag.assigned_to,
+            `"${snag.assigned_to}"`,
             snag.status,
             formatDate(snag.date_resolved),
             snag.was_it_reported_before ? 'Yes' : 'No',
             formatDate(snag.previous_date_reported),
-            snag.previous_worker || '',
-            snag.recurring_count,
-            snag.issue_type
+            `"${snag.previous_worker}"`,
+            `"${snag.issue_type}"`,
+            snag.recurring_count
         ]);
     });
 
@@ -536,6 +486,71 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
-// Initial fetch
+function showAlert(message, type, placeholder) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    `;
+    placeholder.appendChild(wrapper);
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+    searchTerm = this.value;
+    currentPage = 1;
+    renderSnagTable();
+});
+
+document.querySelectorAll('.btn-filter-status').forEach(button => {
+    button.addEventListener('click', function() {
+        currentStatusFilter = this.textContent;
+        currentPage = 1;
+        renderSnagTable();
+    });
+});
+
+function openCalendar() {
+    $('#calendarModal').modal('show');
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 650,
+        events: snags.map(snag => ({
+            title: `${snag.snag_details} (${snag.status})`,
+            start: snag.date_reported,
+            end: snag.date_resolved,
+            extendedProps: { id: snag.id }
+        })),
+        eventClick: function(info) {
+            const snagId = info.event.extendedProps.id;
+            const snag = snags.find(s => s.id === snagId);
+            if (snag) {
+                alert(`Snag Details: ${snag.snag_details}\nStatus: ${snag.status}\nReported: ${snag.date_reported}`);
+            }
+        },
+        dateClick: function(info) {
+            const clickedDate = info.dateStr;
+            const snagsOnDate = snags.filter(snag => snag.date_reported === clickedDate);
+            if (snagsOnDate.length > 0) {
+                let snagDetails = `Snags on ${clickedDate}:\n`;
+                snagsOnDate.forEach(snag => {
+                    snagDetails += `\n${snag.snag_details} (${snag.status}) - ${snag.snag_link}`;
+                });
+                alert(snagDetails);
+            } else {
+                alert(`No snags on ${clickedDate}`);
+            }
+        }
+    });
+    calendar.render();
+}
+
 fetchSnags();
-// THEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE 
