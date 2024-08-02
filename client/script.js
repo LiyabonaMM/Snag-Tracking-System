@@ -1,3 +1,5 @@
+// script.js
+
 let editIndex = null;
 let snags = [];
 let currentSortField = null;
@@ -458,16 +460,16 @@ function exportToCSV() {
     sortedSnags.forEach(snag => {
         ws_data.push([
             snag.id,
-            `"${snag.snag_details}"`,
-            `"${snag.consultant_reporter_name}"`,
+            `${snag.snag_details}`,
+            `${snag.consultant_reporter_name}`,
             formatDate(snag.date_reported),
-            `"${snag.assigned_to}"`,
+            `${snag.assigned_to}`,
             snag.status,
             formatDate(snag.date_resolved),
             snag.was_it_reported_before ? 'Yes' : 'No',
             formatDate(snag.previous_date_reported),
-            `"${snag.previous_worker}"`,
-            `"${snag.issue_type}"`,
+            `${snag.previous_worker}`,
+            `${snag.issue_type}`,
             snag.recurring_count
         ]);
     });
@@ -523,34 +525,36 @@ function renderCalendar() {
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         height: 650,
+        events: [],  // No initial events; they'll be added later
+        dateClick: function(info) {
+            const clickedDate = info.dateStr;
+            const snagsOnDate = snags.filter(snag => new Date(snag.date_reported).toISOString().split('T')[0] === clickedDate);
+            let modalBody = `<h4>Snags on ${clickedDate}:</h4>`;
+            if (snagsOnDate.length > 0) {
+                snagsOnDate.forEach(snag => {
+                    modalBody += `<p>${snag.snag_details} (${snag.status}) - <a href="${snag.snag_link}" target="_blank">Link</a></p>`;
+                });
+            } else {
+                modalBody += `<p>No snags reported on this date.</p>`;
+            }
+            document.getElementById('calendarModalBody').innerHTML = modalBody;
+            $('#calendarModal').modal('show');
+        }
+    });
+
+    // Render the calendar
+    calendar.render();
+
+    // Add events after rendering
+    calendar.addEventSource({
         events: snags.map(snag => ({
             title: `${snag.snag_details} (${snag.status})`,
             start: snag.date_reported,
-            end: snag.date_resolved,
-            extendedProps: { id: snag.id }
-        })),
-        eventClick: function(info) {
-            const snagId = info.event.extendedProps.id;
-            const snag = snags.find(s => s.id === snagId);
-            if (snag) {
-                alert(`Snag Details: ${snag.snag_details}\nStatus: ${snag.status}\nReported: ${snag.date_reported}`);
-            }
-        },
-        dateClick: function(info) {
-            const clickedDate = info.dateStr;
-            const snagsOnDate = snags.filter(snag => snag.date_reported === clickedDate);
-            if (snagsOnDate.length > 0) {
-                let snagDetails = `Snags on ${clickedDate}:\n`;
-                snagsOnDate.forEach(snag => {
-                    snagDetails += `\n${snag.snag_details} (${snag.status}) - ${snag.snag_link}`;
-                });
-                alert(snagDetails);
-            } else {
-                alert(`No snags on ${clickedDate}`);
-            }
-        }
+            url: snag.snag_link
+        }))
     });
-    calendar.render();
 }
+
+
 
 fetchSnags();
